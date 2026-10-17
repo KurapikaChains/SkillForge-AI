@@ -56,13 +56,27 @@
             <div><span class="step-chip">01</span><h2>Product brief</h2></div>
             <span class="tiny-tag">INPUT</span>
           </div>
-          <p class="panel-subtitle">Start with what you know. Clear details make a more useful draft.</p>
+          <p class="panel-subtitle">Upload the product photo to let AI inspect the visible details and draft your content.</p>
+
+          <label for="product-image">Product image <span class="optional-label">OPTIONAL FOR TEMPLATE MODE</span></label>
+          <label class="upload-zone" id="upload-zone" for="product-image">
+            <input id="product-image" name="productImage" type="file" accept="image/png,image/jpeg,image/webp">
+            <span class="upload-icon">↑</span>
+            <span class="upload-title">Click to upload or choose a photo</span>
+            <span class="upload-help">JPG, PNG, or WEBP · up to 5 MB</span>
+          </label>
+          <div class="image-preview-wrap" id="image-preview-wrap" hidden>
+            <img id="image-preview" alt="Selected product preview">
+            <div class="image-preview-info"><strong id="image-file-name">Product photo</strong><span id="image-file-size"></span></div>
+            <button class="remove-image" id="remove-image" type="button" aria-label="Remove product image">×</button>
+          </div>
+          <p class="small-note image-status" id="image-status">With an image, the app can use a vision-capable AI model when the backend is configured.</p>
 
           <label for="product-name">Product name</label>
-          <input id="product-name" name="productName" placeholder="e.g. Solar outdoor wall light" maxlength="120" required>
+          <input id="product-name" name="productName" placeholder="Optional when uploading a product photo" maxlength="120">
 
           <label for="product-details">What does it do?</label>
-          <textarea id="product-details" name="productDetails" rows="4" maxlength="1000" placeholder="Describe the product using only verified details. What problem does it help with?" required></textarea>
+          <textarea id="product-details" name="productDetails" rows="4" maxlength="1000" placeholder="Optional context: product benefits, verified specs, offer, or target buyer"></textarea>
 
           <div class="field-row">
             <div class="field">
@@ -93,9 +107,9 @@
 
           <div class="form-actions">
             <button class="button button-secondary" type="button" id="sample-button">Use sample</button>
-            <button class="button button-primary" type="submit"><span>✳</span> Generate draft</button>
+            <button class="button button-primary" id="generate-button" type="submit"><span>✳</span> Generate content</button>
           </div>
-          <p class="small-note">Template-based starter · no AI API connected yet</p>
+          <p class="small-note">Image + AI mode requires your server and API key. Without an image, template mode is used.</p>
         </form>
 
         <section class="panel results-panel" aria-live="polite">
