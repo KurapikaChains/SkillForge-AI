@@ -11,6 +11,44 @@ app.disable("x-powered-by");
 app.use(express.json({limit: "8mb"}));
 app.use(express.static(__dirname));
 
+
+app.post("/api/generate-from-description", async (req, res) => {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(503).json({error:"AI is not configured. Add OPENAI_API_KEY to your local .env file and restart the server."});
+    }
+    const {productName = "", productDetails = "", audience = "practical shoppers", language = "taglish", tone = "friendly"} = req.body || {};
+    if (typeof productName !== "string" || typeof productDetails !== "string" || !productName.trim() || !productDetails.trim()) {
+      return res.status(400).json({error:"Enter both a product name and a product description, or upload a product image."});
+    }
+    const prompt = `Create TikTok affiliate content from this product brief. Return only valid JSON with keys: hooks (array of exactly 3 strings), caption (string), voiceover (string), scenes (array of exactly 8 objects, each with time, title, camera, purpose, voice).
+Product: ${productName.trim().slice(0,120)}
+Details: ${productDetails.trim().slice(0,1500)}
+Audience: ${String(audience).slice(0,100)}
+Language: ${String(language).slice(0,30)}
+Tone: ${String(tone).slice(0,30)}
+Storyboard scenes must cover 0–10 seconds and include camera angles/movement. Keep voice lines concise. Do not invent specifications, prices, safety, durability, performance, or accessories not stated in the brief. Avoid misleading claims and fake scarcity.`;
+    const client = new OpenAI({apiKey:process.env.OPENAI_API_KEY});
+    const completion = await client.responses.create({
+      model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+      input: prompt,
+      text: {format:{type:"json_object"}}
+    });
+    const raw = completion.output_text;
+    if (!raw) throw new Error("The AI returned an empty response.");
+    let draft;
+    try { draft = JSON.parse(raw); } catch { throw new Error("The AI response could not be parsed. Please try again."); }
+    if (!Array.isArray(draft.hooks) || draft.hooks.length !== 3 || typeof draft.caption !== "string" || typeof draft.voiceover !== "string" || !Array.isArray(draft.scenes) || draft.scenes.length !== 8) {
+      throw new Error("The AI returned an incomplete draft. Please try again.");
+    }
+    return res.json({draft});
+  } catch (error) {
+    console.error("Description generation error:", error.message);
+    const message = error.status === 401 ? "The API key was rejected. Check OPENAI_API_KEY in .env." : error.status === 429 ? "AI rate limit or billing limit reached. Check your API account." : error.message || "Unable to generate content from this description.";
+    return res.status(error.status === 401 ? 502 : 500).json({error:message});
+  }
+});
+
 app.post("/api/generate-from-image", async (req, res) => {
   try {
     if (!process.env.OPENAI_API_KEY) {
