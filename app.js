@@ -142,12 +142,16 @@ $("#creator-form").addEventListener("submit", event => {
     language: form.get("language"),
     tone: form.get("tone")
   };
+  if (selectedImageDataUrl) {
+    generateFromImage(data);
+    return;
+  }
   if (!data.productName || !data.productDetails) {
-    showToast("Please add a product name and description.");
+    showToast("Upload a product image or enter a product name and description.");
     return;
   }
   renderDraft(makeDraft(data));
-  showToast("Your draft is ready to review.");
+  showToast("Template draft ready. Add a photo for AI image analysis.");
 });
 
 $("#sample-button").addEventListener("click", () => {
