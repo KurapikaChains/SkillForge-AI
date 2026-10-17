@@ -1,7 +1,9 @@
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 let latestDraft = null;
-let toastTimeout;\nlet selectedImageDataUrl = null;\nlet selectedImageFile = null;
+let toastTimeout;
+let selectedImageDataUrl = null;
+let selectedImageFile = null;
 
 const sceneTemplates = [
   {time:"0–1 s", title:"Attention hook", camera:"Close-up, quick push-in on the product.", purpose:"Show the product clearly in the first second."},
@@ -150,8 +152,7 @@ $("#creator-form").addEventListener("submit", event => {
     showToast("Upload a product image or enter a product name and description.");
     return;
   }
-  renderDraft(makeDraft(data));
-  showToast("Template draft ready. Add a photo for AI image analysis.");
+  generateFromDescription(data);
 });
 
 $("#sample-button").addEventListener("click", () => {
@@ -301,6 +302,37 @@ uploadZone.addEventListener("drop", event => {
   imageInput.files = transfer.files;
   imageInput.dispatchEvent(new Event("change", {bubbles:true}));
 });
+
+
+async function generateFromDescription(data) {
+  generateButton.disabled = true;
+  generateButton.textContent = "Generating…";
+  imageStatus.textContent = "Generating content from your product description…";
+  try {
+    const response = await fetch("/api/generate-from-description", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(data)
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "AI request failed. Check server setup.");
+    if (!payload.draft || !Array.isArray(payload.draft.hooks) || !Array.isArray(payload.draft.scenes)) {
+      throw new Error("AI returned an unexpected response. Please try again.");
+    }
+    renderDraft(payload.draft);
+    imageStatus.textContent = "AI draft generated from your product description. Verify all claims before publishing.";
+    showToast("AI content generated successfully.");
+  } catch (error) {
+    const message = error && error.message ? error.message : "Could not reach the AI backend.";
+    imageStatus.textContent = message.includes("Failed to fetch")
+      ? "AI backend is not running. Run npm start in your project folder."
+      : message;
+    showToast(message.includes("Failed to fetch") ? "Start the local server to use AI." : message);
+  } finally {
+    generateButton.disabled = false;
+    generateButton.innerHTML = "<span>✳</span> Generate content";
+  }
+}
 
 async function generateFromImage(data) {
   if (!selectedImageDataUrl) return;
