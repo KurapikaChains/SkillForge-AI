@@ -11,9 +11,14 @@ The front end uses HTML, CSS, and JavaScript. Image-based AI generation uses a s
 
 ## Run it locally
 
-1. Download or clone this repository.
-2. Open `index.html` in your browser.
-3. Choose **Creator Assistant**, enter a product description, and click **Generate draft**.
+1. Install Node.js 18 or newer.
+2. Clone the repository.
+3. Run `npm install`.
+4. Copy `.env.example` to `.env` and add your API key.
+5. Run `npm start`.
+6. Open `http://localhost:3000`, upload a product photo, and click **Generate content**.
+
+Without a configured server/API key, you can still open `index.html` directly and use template mode with a product name and description.
 
 Or clone with Git:
 
