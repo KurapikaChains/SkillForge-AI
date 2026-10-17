@@ -1,0 +1,18 @@
+{
+  "name": "skillforge-ai",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Beginner-friendly AI product content assistant with image upload",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "openai": "^4.77.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
