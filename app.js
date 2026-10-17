@@ -1,7 +1,7 @@
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 let latestDraft = null;
-let toastTimeout;
+let toastTimeout;\nlet selectedImageDataUrl = null;\nlet selectedImageFile = null;
 
 const sceneTemplates = [
   {time:"0–1 s", title:"Attention hook", camera:"Close-up, quick push-in on the product.", purpose:"Show the product clearly in the first second."},
@@ -226,3 +226,114 @@ $$("[data-view]").forEach(button => button.addEventListener("click", () => {
 }));
 
 $("#back-to-creator").addEventListener("click", () => $('[data-view="creator"]').click());
+
+
+// Product photo upload and preview
+const imageInput = $("#product-image");
+const uploadZone = $("#upload-zone");
+const imagePreviewWrap = $("#image-preview-wrap");
+const imagePreview = $("#image-preview");
+const imageStatus = $("#image-status");
+const generateButton = $("#generate-button");
+
+function formatBytes(bytes) {
+  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+imageInput.addEventListener("change", () => {
+  const file = imageInput.files && imageInput.files[0];
+  if (!file) return;
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowedTypes.includes(file.type)) {
+    imageInput.value = "";
+    showToast("Choose a JPG, PNG, or WEBP image.");
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    imageInput.value = "";
+    showToast("Image must be 5 MB or smaller.");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    selectedImageFile = file;
+    selectedImageDataUrl = String(reader.result || "");
+    imagePreview.src = selectedImageDataUrl;
+    $("#image-file-name").textContent = file.name;
+    $("#image-file-size").textContent = formatBytes(file.size);
+    imagePreviewWrap.hidden = false;
+    uploadZone.hidden = true;
+    imageStatus.textContent = "Photo ready. Generate content to ask AI to inspect visible product details.";
+    $("#product-name").required = false;
+    $("#product-details").required = false;
+  };
+  reader.onerror = () => showToast("Could not read this image. Try another file.");
+  reader.readAsDataURL(file);
+});
+
+$("#remove-image").addEventListener("click", () => {
+  selectedImageDataUrl = null;
+  selectedImageFile = null;
+  imageInput.value = "";
+  imagePreview.removeAttribute("src");
+  imagePreviewWrap.hidden = true;
+  uploadZone.hidden = false;
+  imageStatus.textContent = "With an image, the app can use a vision-capable AI model when the backend is configured.";
+});
+
+uploadZone.addEventListener("dragover", event => {
+  event.preventDefault();
+  uploadZone.classList.add("dragover");
+});
+uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("dragover"));
+uploadZone.addEventListener("drop", event => {
+  event.preventDefault();
+  uploadZone.classList.remove("dragover");
+  const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+  if (!file) return;
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  imageInput.files = transfer.files;
+  imageInput.dispatchEvent(new Event("change", {bubbles:true}));
+});
+
+async function generateFromImage(data) {
+  if (!selectedImageDataUrl) return;
+  generateButton.disabled = true;
+  generateButton.textContent = "Analyzing image…";
+  imageStatus.textContent = "Sending the photo to your configured AI backend. The image is not stored by this app.";
+  try {
+    const response = await fetch("/api/generate-from-image", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        imageDataUrl: selectedImageDataUrl,
+        productName: data.productName,
+        productDetails: data.productDetails,
+        audience: data.audience,
+        language: data.language,
+        tone: data.tone
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || "AI request failed. Check server setup.");
+    }
+    if (!payload.draft || !Array.isArray(payload.draft.hooks) || !Array.isArray(payload.draft.scenes)) {
+      throw new Error("AI returned an unexpected response. Please try again.");
+    }
+    renderDraft(payload.draft);
+    imageStatus.textContent = "AI draft generated from your product photo. Check all details before publishing.";
+    showToast("AI analyzed the image and drafted your content.");
+  } catch (error) {
+    const message = error && error.message ? error.message : "Could not reach the AI backend.";
+    imageStatus.textContent = message.includes("Failed to fetch")
+      ? "AI backend is not running. Follow README.md to start the server; template mode still works."
+      : message;
+    showToast(message.includes("Failed to fetch") ? "Start the local server to use image AI." : message);
+  } finally {
+    generateButton.disabled = false;
+    generateButton.innerHTML = "<span>✳</span> Generate content";
+  }
+}
